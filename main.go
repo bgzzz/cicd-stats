@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
 
 	"github.com/bgzzz/cicd-stats/glb"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -43,6 +43,12 @@ func createCtlApp() *cli.App {
 			Usage:   "gitlab-project-id determines project id of the gitlab",
 			EnvVars: []string{"GITLAB_PROJECT_ID"},
 		},
+		&cli.StringFlag{
+			Name:    "force-clone",
+			Usage:   "force-clone removes repo folder and clones all the projects from the scratch",
+			EnvVars: []string{"FORCE_CLONE"},
+			Value:   "true",
+		},
 	}
 
 	return &cli.App{
@@ -78,6 +84,12 @@ func createCtlApp() *cli.App {
 						return err
 					}
 
+					forceClones := c.String("force-clone")
+					forceClone, err := strconv.ParseBool(forceClones)
+					if err != nil {
+						return err
+					}
+
 					repos, err := glb.NewGLB(token)
 					if err != nil {
 						return err
@@ -88,9 +100,16 @@ func createCtlApp() *cli.App {
 						return err
 					}
 
-					for _, project := range projects {
-						fmt.Println("#", project.HTTPURLToRepo)
-						fmt.Printf("\"%d\",\n", project.ID)
+					dirs := []string{}
+					if forceClone {
+						dirs, err = repos.ForceCloneProjects(projects)
+						if err != nil {
+							return err
+						}
+					}
+
+					for _, dir := range dirs {
+						log.Println(dir)
 					}
 
 					return nil
